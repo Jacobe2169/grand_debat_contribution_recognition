@@ -1,0 +1,6 @@
+Glove/
+deprecated/
+data/
+outputs/
+*.txt
+*.csv

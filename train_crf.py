@@ -1,3 +1,6 @@
+import argparse
+import sys
+
 import scipy.stats
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import RandomizedSearchCV
@@ -8,19 +11,34 @@ from sklearn_crfsuite import metrics
 
 from lib.utils import *
 from joblib import dump
+import logging
+
 
 import spacy
-import os
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("input_file_csv")
+parser.add_argument("output_filename")
+parser.add_argument("--include-end-tag",action="store_true",help="Train the model to recognize the end word of contribution")
+parser.add_argument("--save-parsed-input-file")
+args = parser.parse_args()
+
+# LOAD Spacy model
+logging.info("LOADING SPACY MODEL...")
 nlp = spacy.load("fr_core_news_md")
 
-df_annotation = load_annot_label("data/project-4-at-2022-04-25-08-38-855b93ee.csv")
+# Load
+logging.info("LOADING INPUT DATA...")
+df_annotation = load_annot_label(args.input_file_csv)
 df_annotation = df_annotation[df_annotation.opinion_type == "Proposition"]
-df_annotation = df_annotation[df_annotation.annotator_id == 1]
 df_annotation = df_annotation.drop_duplicates(subset="id annotator_id x y".split())
 
-if os.path.exists("annotation.csv"):
-    df_annotation = pd.read_csv("./annotation.csv",sep="\t")
-    df_annotation = df_annotation[df_annotation.keep == 1]
+if args.save_parsed_input_file:
+    df_annotation.to_csv("annotationfile_parsed.csv")
+
+
+logging.info("PARSING DATA...")
 
 lemmas = []
 pos = []
@@ -50,10 +68,10 @@ for ix,row in df_annotation.iterrows():
                        "pos":pos[row.id],
                        "lemma":lemmas[row.id]}
     for ix,j in enumerate(start_pos[row.id]):
-        if j < row.y and j > row.x:
+        if row.y > j > row.x:
             data[row.id]["annot"][ix] = "I-"+row.opinion_type
-        #if j+len(texts[row.id][ix]) == row.y:
-            #data[row.id]["annot"][ix] = "end-"+row.opinion_type
+        if j+len(texts[row.id][ix]) == row.y and args.include_end_tag:
+            data[row.id]["annot"][ix] = "end-"+row.opinion_type
         if j == row.x:
             data[row.id]["annot"][ix] = "B-"+row.opinion_type
 
@@ -90,6 +108,7 @@ rs = RandomizedSearchCV(crf, params_space,
                         n_jobs=-1,
                         n_iter=50,
                         scoring=f1_scorer)
+logging.info("SEARCHING FOR THE CRF OPTIMAL PARAMETERS...")
 rs.fit(X_train, y_train)
 print('best params:', rs.best_params_)
 print('best CV score:', rs.best_score_)
@@ -99,4 +118,4 @@ print(metrics.flat_classification_report(
 ))
 
 
-dump(rs.best_estimator_,"crf_trained.pkl")
+dump(rs.best_estimator_,args.output_filename)

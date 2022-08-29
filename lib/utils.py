@@ -2,8 +2,8 @@ import pandas as pd
 
 
 
-def load_annot_label(fn):
-    df = pd.read_csv(fn, sep="\t").iloc[:, 1:].fillna("[]")
+def load_annot_label(fn,csv_sep = ","):
+    df = pd.read_csv(fn, sep=csv_sep).iloc[:, 1:].fillna("[]")
     df.label = df.label.apply(eval)
     data = df["id label annotator answer".split()].values
     new_data = {}

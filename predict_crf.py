@@ -1,3 +1,5 @@
+import os
+
 from joblib import load
 import spacy
 from tqdm import tqdm
@@ -13,12 +15,16 @@ def foo(x):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("gdb_data_filename")
+parser.add_argument("model_filename")
 parser.add_argument("output_dir")
 
 args = parser.parse_args()
 
+if not os.path.exists(args.output_dir):
+    os.mkdir(args.output_dir)
+
 # LOAD MODEL
-crf = load("crf_trained.pkl")
+crf = load(args.model_filename)
 
 nlp = spacy.load("fr_core_news_md")
 
@@ -41,7 +47,7 @@ for col in df_data.columns[11:]:
             curr_prop = ""
             curr_propx,curr_propy = 0,0
             for ix,p in enumerate(pred):
-                if p.startswith("start"):
+                if p.startswith("I"):
                     if curr_prop != "":
                         curr_propy = ix
                         text_cleansed = text[curr_propx:curr_propy].text.replace('\t','')
