@@ -4,3 +4,4 @@ data/
 outputs/
 *.txt
 *.csv
+.idea
